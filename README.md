@@ -1,2 +1,2 @@
-# BMI
-Body Mass Index
+# PyMC 
+Probabilistic Programming and Bayesian Modeling in Python
