@@ -1,0 +1,83 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "authorship_tag": "ABX9TyNpT0gTDOjmWeJVNFU9AQ42",
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/medsellufbc/BMI/blob/main/Generative%20Bayesian\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "tkPMdEGJbhwL"
+      },
+      "outputs": [],
+      "source": [
+        "import numpy as np\n",
+        "import pymc3 as pm\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "# Generate synthetic historical data\n",
+        "time = np.arange(1, 11)  # Time points\n",
+        "actual_cases = np.array([10, 30, 70, 150, 300, 600, 1000, 1500, 2000, 2500])  # Actual number of cases\n",
+        "\n",
+        "# Define Generative Bayesian Model (SEIR Model)\n",
+        "with pm.Model() as seir_model:\n",
+        "    # Define priors for model parameters\n",
+        "    beta = pm.Beta(\"beta\", alpha=2, beta=5)  # Transmission rate\n",
+        "    gamma = pm.Gamma(\"gamma\", alpha=2, beta=0.2)  # Recovery rate\n",
+        "    N = pm.Uniform(\"N\", lower=1, upper=3000)  # Total population\n",
+        "\n",
+        "    # Initial conditions\n",
+        "    I0 = pm.Exponential(\"I0\", lam=0.1)\n",
+        "    E0 = pm.Exponential(\"E0\", lam=0.1)\n",
+        "\n",
+        "    # Solve ODE system\n",
+        "    ode_solution = pm.ode.DifferentialEquation(\n",
+        "        func=lambda t, y, p: [beta * y[0] * y[1] / N - gamma * y[1], gamma * y[1]],\n",
+        "        times=time,\n",
+        "        n_states=2,\n",
+        "        n_theta=3,\n",
+        "        t0=1.0,\n",
+        "    )\n",
+        "\n",
+        "    # Likelihood\n",
+        "    cases_observed = pm.Poisson(\"cases_observed\", mu=ode_solution.y[:, 1], observed=actual_cases)\n",
+        "\n",
+        "    # Sample from the posterior distribution\n",
+        "    trace = pm.sample(1000, tune=1000)\n",
+        "\n",
+        "# Plot model predictions and actual data\n",
+        "plt.figure(figsize=(10, 6))\n",
+        "plt.plot(time, actual_cases, 'o', label='Actual Data')\n",
+        "pm.plot_posterior_predictive_glm(trace, samples=100, eval=np.arange(1, 11))\n",
+        "plt.xlabel('Time')\n",
+        "plt.ylabel('Number of Cases')\n",
+        "plt.title('Generative Bayesian Model (SEIR Model) Fit')\n",
+        "plt.legend()\n",
+        "plt.show()\n"
+      ]
+    }
+  ]
+}
